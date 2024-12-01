@@ -1,0 +1,120 @@
+// Path: /prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String    @unique
+  hashedPassword String
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  enrolledCourses Course[]    @relation("Enrollments", fields: [enrolledCourseIds], references: [id])
+  enrolledCourseIds String[]  @db.ObjectId
+  
+  progress      Progress[]
+  quizResults   QuizResult[]
+  badges        Badge[]
+}
+
+model Course {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  imageUrl    String?
+  category    String 
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  published   Boolean   @default(false)
+
+  lessons     Lesson[]
+  students    User[]    @relation("Enrollments", fields: [studentIds], references: [id])
+  studentIds  String[]  @db.ObjectId
+  progress    Progress[]
+}
+
+model Lesson {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  content     String
+  videoUrl    String?
+  courseId    String    @db.ObjectId
+  order       Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  course      Course    @relation(fields: [courseId], references: [id])
+  quiz        Quiz?
+  progress    Progress[]
+}
+
+model Quiz {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  lessonId    String    @unique @db.ObjectId
+  questions   Question[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lesson      Lesson    @relation(fields: [lessonId], references: [id])
+  results     QuizResult[]
+}
+
+model Question {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  content     String
+  options     String[]
+  correctOption Int
+  quizId      String    @db.ObjectId
+  
+  quiz        Quiz      @relation(fields: [quizId], references: [id])
+}
+
+model Progress {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  courseId    String    @db.ObjectId
+  lessonId    String    @db.ObjectId
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+
+  user        User      @relation(fields: [userId], references: [id])
+  course      Course    @relation(fields: [courseId], references: [id])
+  lesson      Lesson    @relation(fields: [lessonId], references: [id])
+
+  @@unique([userId, courseId, lessonId])
+}
+
+model QuizResult {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String    @db.ObjectId
+  quizId      String    @db.ObjectId
+  score       Int
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+  quiz        Quiz      @relation(fields: [quizId], references: [id])
+}
+
+model Badge {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  imageUrl    String
+  criteria    String
+  userId      String    @db.ObjectId
+  awardedAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id])
+}
+
