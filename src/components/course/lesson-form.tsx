@@ -10,15 +10,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 import { UploadButton } from "@/components/upload-button"
 
+// Match the Prisma Lesson type
+interface Lesson {
+  id: string
+  title: string
+  description: string
+  content: string
+  videoUrl: string | null
+  courseId: string
+  order: number
+}
+
 interface LessonFormProps {
   courseId: string
-  initialData?: {
-    id?: string
-    title: string
-    description: string
-    content: string
-    videoUrl?: string
-  }
+  initialData?: Lesson
 }
 
 export function LessonForm({ courseId, initialData }: LessonFormProps) {

@@ -1,15 +1,22 @@
 // Path: /src/app/api/progress/route.ts
 import { NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
 export async function PUT(req: Request) {
   try {
-    const { lessonId, courseId, userId } = await req.json()
+    const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
 
-    // First try to find an existing progress
+    const { lessonId, courseId, isCompleted } = await req.json()
+
+    // First try to find existing progress
     const existingProgress = await db.progress.findFirst({
       where: {
-        userId: userId,
+        userId: session.user.id,
         courseId: courseId,
         lessonId: lessonId,
       }
@@ -22,8 +29,8 @@ export async function PUT(req: Request) {
           id: existingProgress.id
         },
         data: {
-          completed: true,
-          completedAt: new Date()
+          completed: isCompleted,
+          completedAt: isCompleted ? new Date() : null
         }
       })
       return NextResponse.json(progress)
@@ -32,11 +39,11 @@ export async function PUT(req: Request) {
     // If doesn't exist, create it
     const progress = await db.progress.create({
       data: {
-        userId,
+        userId: session.user.id,
         courseId,
         lessonId,
-        completed: true,
-        completedAt: new Date()
+        completed: isCompleted,
+        completedAt: isCompleted ? new Date() : null
       }
     })
 

@@ -1,110 +1,121 @@
-// Path: /src/app/(dashboard)/courses/[courseId]/lessons/[lessonId]/page.tsx
-import { db } from "@/lib/db"
+// src/app/(dashboard)/courses/[courseId]/lessons/[lessonId]/page.tsx
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { VideoPlayer } from "@/components/course/video-player"
-import { CourseProgressButton } from "@/components/course/course-progress-button"
-import { LessonNavigation } from "@/components/course/lesson-navigation"
-import { QuizCard } from "@/components/course/quiz/quiz-card"
+import { db } from "@/lib/db"
+import { LessonViewer } from "@/components/course/lesson-viewer"
+import { CourseSidebar } from "@/components/course/course-sidebar"
+import { CourseMobileSidebar } from "@/components/course/course-mobile-sidebar"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 interface LessonPageProps {
- params: {
-   courseId: string
-   lessonId: string
- }
-}
-
-async function getLesson(courseId: string, lessonId: string) {
- const lesson = await db.lesson.findUnique({
-   where: {
-     id: lessonId,
-     courseId: courseId
-   },
-   include: {
-     course: {
-       include: {
-         lessons: {
-           orderBy: {
-             order: 'asc'
-           }
-         }
-       }
-     },
-     quiz: {
-       include: {
-         questions: true
-       }
-     }
-   }
- })
-
- return lesson
+  params: {
+    courseId: string
+    lessonId: string
+  }
 }
 
 export default async function LessonPage({ params }: LessonPageProps) {
- const session = await getServerSession(authOptions)
- if (!session?.user?.id) {
-   return redirect("/")
- }
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) return redirect("/")
 
- const lesson = await getLesson(params.courseId, params.lessonId)
+  const lesson = await db.lesson.findUnique({
+    where: {
+      id: params.lessonId,
+      courseId: params.courseId,
+    },
+    include: {
+      course: {
+        include: {
+          lessons: {
+            orderBy: {
+              order: 'asc'
+            },
+            include: {
+              progress: {
+                where: {
+                  userId: session.user.id
+                }
+              }
+            }
+          }
+        }
+      },
+      quiz: {
+        include: {
+          questions: true
+        }
+      }
+    }
+  })
 
- if (!lesson) {
-   return redirect(`/courses/${params.courseId}`)
- }
+  if (!lesson) return redirect("/courses")
 
- const courseLessons = lesson.course.lessons
- const currentLessonIndex = courseLessons.findIndex(l => l.id === lesson.id)
- const nextLesson = courseLessons[currentLessonIndex + 1]
- const prevLesson = courseLessons[currentLessonIndex - 1]
+  const userProgress = await db.progress.findUnique({
+    where: {
+      userId_courseId_lessonId: {
+        userId: session.user.id,
+        courseId: params.courseId,
+        lessonId: params.lessonId
+      }
+    }
+  })
 
- return (
-   <div className="p-6 space-y-8">
-     <div>
-       <h1 className="text-2xl font-bold">{lesson.title}</h1>
-       <p className="text-sm text-muted-foreground">{lesson.description}</p>
-     </div>
+  const progressCount = lesson.course.lessons.filter(
+    lesson => lesson.progress.some(p => p.completed)
+  ).length
 
-     {lesson.videoUrl && (
-       <VideoPlayer videoUrl={lesson.videoUrl} />
-     )}
+  const currentLessonIndex = lesson.course.lessons.findIndex(l => l.id === lesson.id)
+  const nextLesson = lesson.course.lessons[currentLessonIndex + 1]
+  const prevLesson = lesson.course.lessons[currentLessonIndex - 1]
 
-     <div>
-       <h2 className="text-xl font-semibold mb-2">Lesson Content</h2>
-       <div className="prose dark:prose-invert">
-         {lesson.content}
-       </div>
-     </div>
+  return (
+    <div className="h-full">
+      <div className="flex h-full">
+        {/* Course Sidebar */}
+        <div className="hidden md:block w-80 flex-shrink-0 border-r h-full">
+          <CourseSidebar
+            course={lesson.course}
+            progressCount={progressCount}
+          />
+        </div>
 
-     {lesson.quiz && (
-       <div>
-         <h2 className="text-xl font-semibold mb-4">Lesson Quiz</h2>
-         <QuizCard
-           quizId={lesson.quiz.id}
-           lessonId={lesson.id}
-           questions={lesson.quiz.questions}
-           onComplete={() => {
-             // We'll handle this next
-           }}
-         />
-       </div>
-     )}
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-6">
+            {/* Back button and mobile sidebar */}
+            <div className="flex items-center gap-4 mb-4">
+              <Link href={`/courses/${params.courseId}`}>
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to course
+                </Button>
+              </Link>
+              <div className="md:hidden">
+                <CourseMobileSidebar 
+                  course={lesson.course}
+                  progressCount={progressCount}
+                />
+              </div>
+            </div>
 
-     <div className="flex flex-col gap-y-4">
-       <CourseProgressButton
-         lessonId={lesson.id}
-         courseId={params.courseId}
-         userId={session.user.id}
-       />
-       <LessonNavigation 
-         courseId={params.courseId}
-         lessonId={lesson.id}
-         nextLessonId={nextLesson?.id}
-         prevLessonId={prevLesson?.id}
-       />
-     </div>
-   </div>
- )
+            <LessonViewer
+              courseId={params.courseId}
+              lessonId={params.lessonId}
+              title={lesson.title}
+              description={lesson.description}
+              content={lesson.content}
+              videoUrl={lesson.videoUrl}
+              nextLessonId={nextLesson?.id}
+              prevLessonId={prevLesson?.id}
+              progress={userProgress}
+              quiz={lesson.quiz}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
-

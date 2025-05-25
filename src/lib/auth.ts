@@ -1,24 +1,26 @@
-// Path: /src/lib/auth.ts
-import { PrismaAdapter } from "@auth/prisma-adapter"
-import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import { db } from "@/lib/db"
-import bcrypt from "bcrypt"
+// src/lib/auth.ts
+
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import { db } from "@/lib/db"; // Ensure this points to your Prisma client instance
+import bcrypt from "bcrypt";
+import { Adapter } from "next-auth/adapters";
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(db),
+  adapter: PrismaAdapter(db) as Adapter,
   session: {
-    strategy: "jwt"
+    strategy: "jwt", // Using JWT for sessions
   },
   pages: {
-    signIn: "/sign-in",
+    signIn: "/sign-in", // Custom sign-in page
   },
   providers: [
     CredentialsProvider({
-      name: "credentials",
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
+        password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
@@ -26,12 +28,10 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await db.user.findUnique({
-          where: {
-            email: credentials.email
-          }
+          where: { email: credentials.email },
         });
 
-        if (!user || !user?.hashedPassword) {
+        if (!user || !user.hashedPassword) {
           throw new Error("Invalid credentials");
         }
 
@@ -44,33 +44,31 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Invalid credentials");
         }
 
+        // Return a user object that matches the `User` type in `next-auth`
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
-          image: user.image,
-        };
-      }
-    })
+          name: user.name ?? null,
+          image: user.image ?? null,
+        } as any; // Cast to `any` if needed to satisfy the type
+      },
+    }),
   ],
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        return {
-          ...token,
-          id: user.id,
-        }
+        token.id = user.id;
       }
-      return token
+      return token;
     },
     async session({ session, token }) {
-      return {
-        ...session,
-        user: {
+      if (token?.id) {
+        session.user = {
           ...session.user,
           id: token.id as string,
-        }
+        };
       }
-    }
-  }
-}
+      return session;
+    },
+  },
+};

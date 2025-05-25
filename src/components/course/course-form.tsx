@@ -1,4 +1,4 @@
-// Path: /src/components/course/course-form.tsx
+// src/components/course/course-form.tsx
 "use client"
 
 import { useState } from "react"
@@ -7,77 +7,74 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus } from "lucide-react"
 import { toast } from "sonner"
-import { UploadButton } from "@/components/upload-button"
-import Image from "next/image"
 
-const CATEGORIES = [
-  "Programming",
-  "Design",
-  "Business",
-  "Marketing",
-  "Music",
-  "Photography",
-  "Writing"
-] as const
-
-interface CourseFormProps {
-  initialData?: {
-    id?: string
+type FormState = {
+  title: string
+  description: string
+  category: string
+  lessons: {
     title: string
     description: string
-    imageUrl?: string
-    category: (typeof CATEGORIES)[number]
-  }
+    content: string
+    quiz?: {
+      title: string
+      questions: {
+        content: string
+        options: string[]
+        correctOption: number
+      }[]
+    }
+  }[]
 }
 
-export function CourseForm({ initialData }: CourseFormProps) {
+export function CourseForm() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [formData, setFormData] = useState({
-    title: initialData?.title || "",
-    description: initialData?.description || "",
-    imageUrl: initialData?.imageUrl || "",
-    category: initialData?.category || CATEGORIES[0]
+  const [formData, setFormData] = useState<FormState>({
+    title: "",
+    description: "",
+    category: "Programming",
+    lessons: []
   })
+
+  const addLesson = () => {
+    setFormData(prev => ({
+      ...prev,
+      lessons: [...prev.lessons, {
+        title: "",
+        description: "",
+        content: ""
+      }]
+    }))
+  }
+
+  const updateLesson = (index: number, field: string, value: string) => {
+    const newLessons = [...formData.lessons]
+    newLessons[index] = {
+      ...newLessons[index],
+      [field]: value
+    }
+    setFormData(prev => ({ ...prev, lessons: newLessons }))
+  }
 
   const onSubmit = async () => {
     try {
       setIsSubmitting(true)
-
-      if (!formData.title || !formData.description || !formData.category) {
-        toast.error("Please fill in all required fields")
-        return
-      }
-
-      const url = initialData?.id 
-        ? `/api/courses/${initialData.id}`
-        : "/api/courses"
-      
-      const response = await fetch(url, {
-        method: initialData?.id ? "PATCH" : "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+      const response = await fetch("/api/courses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData)
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to save course")
-      }
-
+      if (!response.ok) throw new Error()
+      
       const course = await response.json()
-      toast.success(initialData?.id ? "Course updated" : "Course created")
+      toast.success("Course created successfully")
       router.push(`/dashboard/courses/${course.id}`)
-      router.refresh()
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong")
     } finally {
       setIsSubmitting(false)
@@ -87,41 +84,29 @@ export function CourseForm({ initialData }: CourseFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          {initialData ? "Edit Course" : "Create New Course"}
-        </CardTitle>
+        <CardTitle>Course Details</CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
+        <div className="space-y-4">
           <Input
             placeholder="Course Title"
             value={formData.title}
-            onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+            onChange={e => setFormData(prev => ({ ...prev, title: e.target.value }))}
           />
-        </div>
-
-        <div className="space-y-2">
           <Textarea
             placeholder="Course Description"
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-            rows={5}
+            onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
           />
-        </div>
-
-        <div className="space-y-2">
           <Select
             value={formData.category}
-            onValueChange={(value) => setFormData(prev => ({ 
-              ...prev, 
-              category: value as (typeof CATEGORIES)[number] 
-            }))}
+            onValueChange={value => setFormData(prev => ({ ...prev, category: value }))}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Select category" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map((category) => (
+              {["Programming", "Design", "Business"].map(category => (
                 <SelectItem key={category} value={category}>
                   {category}
                 </SelectItem>
@@ -130,34 +115,44 @@ export function CourseForm({ initialData }: CourseFormProps) {
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <UploadButton
-            endpoint="courseImage"
-            onUploadComplete={(url) => setFormData(prev => ({ ...prev, imageUrl: url }))}
-          />
-          {formData.imageUrl && (
-            <div className="relative aspect-video mt-2">
-              <Image
-                src={formData.imageUrl}
-                alt="Course thumbnail"
-                fill
-                className="object-cover rounded-md"
-              />
-            </div>
-          )}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Lessons</h3>
+            <Button onClick={addLesson} type="button">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lesson
+            </Button>
+          </div>
+
+          {formData.lessons.map((lesson, index) => (
+            <Card key={index}>
+              <CardContent className="pt-6 space-y-4">
+                <Input
+                  placeholder="Lesson Title"
+                  value={lesson.title}
+                  onChange={e => updateLesson(index, "title", e.target.value)}
+                />
+                <Textarea
+                  placeholder="Lesson Description"
+                  value={lesson.description}
+                  onChange={e => updateLesson(index, "description", e.target.value)}
+                />
+                <Textarea
+                  placeholder="Lesson Content"
+                  value={lesson.content}
+                  onChange={e => updateLesson(index, "content", e.target.value)}
+                />
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
         <Button
           onClick={onSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !formData.title || !formData.description}
           className="w-full"
         >
-          {isSubmitting
-            ? "Saving..."
-            : initialData
-            ? "Update Course"
-            : "Create Course"
-          }
+          {isSubmitting ? "Creating..." : "Create Course"}
         </Button>
       </CardContent>
     </Card>

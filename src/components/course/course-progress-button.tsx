@@ -1,4 +1,3 @@
-// Path: /src/components/course/course-progress-button.tsx
 "use client"
 
 import { useState } from "react"
@@ -10,13 +9,15 @@ import { toast } from "sonner"
 interface CourseProgressButtonProps {
   lessonId: string
   courseId: string
-  userId: string
+  isCompleted: boolean
+  onProgressChange: (lessonId: string, isCompleted: boolean) => void
 }
 
 export function CourseProgressButton({
   lessonId,
   courseId,
-  userId
+  isCompleted,
+  onProgressChange
 }: CourseProgressButtonProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
@@ -33,7 +34,7 @@ export function CourseProgressButton({
         body: JSON.stringify({
           lessonId,
           courseId,
-          userId
+          isCompleted: !isCompleted // Toggle the completion status
         })
       })
 
@@ -41,8 +42,16 @@ export function CourseProgressButton({
         throw new Error()
       }
 
-      toast.success("Progress updated")
-      router.refresh()
+      // Update the progress in the parent component (i.e., CourseSidebar or wherever onProgressChange is passed)
+      onProgressChange(lessonId, !isCompleted)
+
+      toast.success(isCompleted ? "Lesson marked as incomplete" : "Lesson completed!")
+
+      // Optionally, navigate to the course page if the last lesson is marked as complete
+      if (!isCompleted) {
+        router.push(`/courses/${courseId}`)
+      }
+
     } catch {
       toast.error("Something went wrong")
     } finally {
@@ -62,6 +71,11 @@ export function CourseProgressButton({
         <>
           <XCircle className="h-4 w-4 mr-2" />
           Updating...
+        </>
+      ) : isCompleted ? (
+        <>
+          <CheckCircle className="h-4 w-4 mr-2 text-emerald-500" />
+          Completed
         </>
       ) : (
         <>

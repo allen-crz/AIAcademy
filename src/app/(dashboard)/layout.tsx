@@ -1,4 +1,4 @@
-// Path: /src/app/(dashboard)/layout.tsx
+// src/app/(dashboard)/layout.tsx
 import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -16,12 +16,15 @@ export default async function DashboardLayout({
     redirect('/signin')
   }
 
+  // Check if the current path is a lesson page
+  const isLessonPage = false // We'll remove this as we're moving lesson pages
+
   return (
-    <div className="min-h-screen">
+    <div className="h-full">
       <Navbar user={session.user} />
-      <div className="flex">
+      <div className="flex h-full pt-16">
         <Sidebar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>

@@ -1,9 +1,10 @@
-// Path: /src/app/api/courses/[courseId]/enroll/route.ts
+// src/app/api/courses/[courseId]/enroll/route.ts
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/db"
 
+// src/app/api/courses/[courseId]/enroll/route.ts
 export async function POST(
   req: Request,
   { params }: { params: { courseId: string } }
@@ -14,22 +15,25 @@ export async function POST(
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    const course = await db.course.update({
+    // Update the user's enrolled courses
+    await db.user.update({
       where: {
-        id: params.courseId,
+        id: session.user.id
       },
       data: {
-        students: {
+        enrolledCourses: {
           connect: {
-            id: session.user.id
+            id: params.courseId
           }
         }
       }
     })
 
-    return NextResponse.json(course)
+    return NextResponse.json({
+      message: "Enrolled successfully"
+    })
   } catch (error) {
-    console.log("[COURSE_ENROLL]", error)
+    console.log("[ENROLL]", error)
     return new NextResponse("Internal Error", { status: 500 })
   }
 }

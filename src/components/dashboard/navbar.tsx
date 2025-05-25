@@ -9,7 +9,7 @@ export default function Navbar({ user }: { user: any }) {
     <div className="border-b">
       <div className="flex h-16 items-center px-4">
         <Link href="/dashboard" className="font-bold">
-          LMS Platform
+          Ai Academy
         </Link>
         <div className="ml-auto flex items-center space-x-4">
           <ModeToggle />

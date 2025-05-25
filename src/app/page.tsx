@@ -5,7 +5,7 @@ export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-24">
       <div className="space-y-6 text-center">
-        <h1 className="text-4xl font-bold">Welcome to LMS Platform</h1>
+        <h1 className="text-4xl font-bold">Welcome to Ai Academy </h1>
         <div className="space-x-4">
           <Link 
             href="/sign-in"

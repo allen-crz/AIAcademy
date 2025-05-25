@@ -94,7 +94,11 @@ export function SignInForm() {
         />
         <Button 
           type="submit" 
-          className="w-full h-11 text-sm font-medium bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+          className="w-full h-11 text-sm font-medium bg-gradient-to-r from-black to-gray-800 
+    hover:from-gray-900 hover:to-black 
+    dark:from-white dark:to-gray-200 
+    dark:hover:from-gray-300 dark:hover:to-white 
+    text-white dark:text-black"
           disabled={isPending}
         >
           {isPending ? (
